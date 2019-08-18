@@ -1,6 +1,5 @@
 
 from setuptools import setup, find_packages
-import sys
 import os
 import glob
 import configparser
@@ -10,9 +9,10 @@ import shutil
 conf = []
 templates = []
 
-long_description = '''WordOps is the commandline tool to manage your
-                      Websites based on WordPress and Nginx with easy to use
-                      commands'''
+long_description = '''WordOps  An essential toolset that eases WordPress
+                      site and server administration. It provide the ability
+                      to Install a high performance WordPress stack
+                      with a few keystrokes'''
 
 for name in glob.glob('config/plugins.d/*.conf'):
     conf.insert(1, name)
@@ -32,7 +32,7 @@ config.read(os.path.expanduser("~")+'/.gitconfig')
 try:
     wo_user = config['user']['name']
     wo_email = config['user']['email']
-except Exception as e:
+except Exception:
     print("WordOps (wo) require an username & and an email "
           "address to configure Git (used to save server configurations)")
     print("Your informations will ONLY be stored locally")
@@ -57,13 +57,13 @@ if not os.path.isfile('/root/.gitconfig'):
     shutil.copy2(os.path.expanduser("~")+'/.gitconfig', '/root/.gitconfig')
 
 setup(name='wo',
-      version='3.9.6.2',
+      version='3.9.8.1',
       description=long_description,
       long_description=long_description,
       classifiers=[],
       keywords='',
       author='WordOps',
-      author_email='core@wordops.net',
+      author_email='contact@wordops.io',
       url='https://wordops.net',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests',
@@ -78,14 +78,15 @@ setup(name='wo',
           # "nose",
           # "coverage",
           # Required to function
-          'cement == 2.4',
+          'cement == 2.8.0',
           'pystache',
           'python-apt',
           'pynginxconfig',
-          'PyMySQL == 0.8.0',
-          'psutil == 3.1.1',
+          'PyMySQL',
+          'psutil',
           'sh',
           'SQLAlchemy',
+          'requests',
       ],
       data_files=[('/etc/wo', ['config/wo.conf']),
                   ('/etc/wo/plugins.d', conf),

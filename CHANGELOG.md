@@ -8,6 +8,113 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### v3.9.x - [Unreleased]
 
+### v3.9.8.1 - 2019-08-18
+
+#### Added
+
+- WordOps backend is automatically secured by the first Let's Encrypt SSL certificate issued
+
+#### Changed
+
+- Extra Nginx directives moved from nginx.conf to conf.d/tweaks.conf
+
+#### Fixed
+
+- MySQLTuner installation
+- `wo stack remove/purge --all`
+- variable substitution in install script
+- `wo stack upgrade --phpmyadmin/--dashboard`
+- phpmyadmin blowfish_secret key length
+- Cement App not exiting on close in case of error
+
+### v3.9.8 - 2019-08-16
+
+#### Added
+
+- Allow web browser caching for json and webmanifest files
+- nginx-core.mustache template used to render nginx.conf during stack setup
+- APT Packages configuration step with `wo stack upgrade` to apply new configurations
+- Cloudflare restore real_ip configuration
+- WP-Rocket plugin support with the flag `--wprocket`
+- Cache-Enabler plugin support with the flag `--wpce`
+- Install unattended-upgrade and enable automated security updates
+- Enable time synchronization with ntp
+- Additional cache exception for woocommerce
+
+#### Changed
+
+- Do not force Nginx upgrade if a custom Nginx package compiled with nginx-ee is detected
+- Gzip enabled again by default with configuration in /etc/nginx/conf.d/gzip.conf
+- Brotli configuration moved in /etc/nginx/conf.d/brotli.conf.disabled (disabled by default)
+- Moving package configuration in a new plugin stack_pref.py
+- Cleanup templates by removing all doublons (with/without php7) and replacing them with variables
+- Updated Nginx to v1.16.1 in response to HTTP/2 vulnerabilites discovered
+- Disable temporary adding swap feature (not working)
+- `wo stack upgrade --nginx` is now able to apply new configurations during `wo update`, it highly reduce upgrade duration
+
+#### Fixed
+
+- Error in HSTS header syntax
+
+### v3.9.7.2 - 2019-08-12
+
+#### Fixed
+
+- redis.conf permissions additional fix
+
+### v3.9.7.1 - 2019-08-09
+
+#### Changed
+
+- Set WordOps backend password length from 16 to 24
+- Upgrade framework cement to 2.6.0
+- Upgrade PyMySQL to 0.9.3
+- Upgrade Psutil to 5.6.3
+
+#### Fixed
+
+- Missing import in `wo sync`
+- redis.conf incorrect permissions
+
+### v3.9.7 - 2019-08-02
+
+#### Added
+
+- MySQL configuration tuning
+- Cronjob to optimize MySQL databases weekly
+- WO-kernel systemd service to automatically apply kernel tweaks on server startup
+- Proftpd stack now secured with TLS
+- New Nginx package built with Brotli from operating system libraries
+- Brotli configuration with only well compressible MIME types
+- WordPress site url automatically updated to `https://domain.tld` when using `-le/--letsencrypt` flag
+- More informations during certificate issuance about validation mode selected
+- `--php72` as alternative for `--php`
+- Automated removal of the deprecated variable `ssl on;` in previous Nginx ssl.conf
+- Project Contributing guidelines
+- Project Code of conduct
+
+#### Changed
+
+- `wo maintenance` refactored
+- Improved debug log
+- Updated Nginx configuration process to not overwrite files with custom data (htpasswd-wo, acl.conf etc..)
+- Adminer updated to v4.7.2
+- eXtplorer updated to v2.1.13
+- Removed WordOps version from the Nginx header X-Powered-By to avoid possible security issues
+- Several code quality improvements to speed up WordOps execution
+- Few adjustements on PHP-FPM configuration (max_input_time,opcache.consistency_checks)
+- Added /dev/urandom & /dev/shm to open_basedir in PHP-FPM configuration
+
+#### Fixed
+
+- Kernel tweaks were not applied without server reboot
+- Fail2ban standalone install
+- `wo stack purge --all` error due to PHP7.3 check
+- Nginx helper configuration during plugin install for Nginx fastcgi_cache and redis-cache
+- phpRedisAdmin stack installation
+- Fixed Travis CI build on pull requests
+- Nginx `server_names_hash_bucket_size` variable error after WordOps upgrade
+
 ### v3.9.6.2 - 2019-07-24
 
 #### Changed

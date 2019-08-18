@@ -6,7 +6,6 @@ from wo.core.variables import WOVariables
 from wo.core.aptget import WOAptGet
 from wo.core.shellexec import WOShellExec
 from wo.core.apt_repo import WORepo
-from wo.core.services import WOService
 import configparser
 import os
 
@@ -80,10 +79,6 @@ class WOStackMigrateController(CementBaseController):
         # Install MariaDB
         apt_packages = WOVariables.wo_mysql
 
-        # If PHP is installed then install php7.2-mysql
-        if WOAptGet.is_installed(self, "php7.2-fpm"):
-            apt_packages = apt_packages + ["php7.2-mysql"]
-
         Log.info(self, "Updating apt-cache, hang on...")
         WOAptGet.update(self)
         Log.info(self, "Installing MariaDB, hang on...")
@@ -96,7 +91,7 @@ class WOStackMigrateController(CementBaseController):
         if ((not self.app.pargs.mariadb)):
             self.app.args.print_help()
         if self.app.pargs.mariadb:
-            if WOVariables.wo_mysql_host is not "localhost":
+            if WOVariables.wo_mysql_host != "localhost":
                 Log.error(
                     self, "Remote MySQL server in use, skipping local install")
 

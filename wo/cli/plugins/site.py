@@ -1,7 +1,6 @@
 # """WordOps site controller."""
 from cement.core.controller import CementBaseController, expose
 from cement.core import handler, hook
-from wo.core.cron import WOCron
 from wo.core.sslutils import SSL
 from wo.core.variables import WOVariables
 from wo.core.shellexec import WOShellExec
@@ -9,14 +8,16 @@ from wo.core.domainvalidate import ValidateDomain
 from wo.core.fileutils import WOFileUtils
 from wo.cli.plugins.site_functions import *
 from wo.core.services import WOService
-from wo.cli.plugins.sitedb import *
+from wo.cli.plugins.sitedb import (addNewSite, getSiteInfo,
+                                   updateSiteInfo, deleteSiteInfo, getAllsites)
 from wo.core.git import WOGit
+from wo.core.logging import Log
 from subprocess import Popen
 from wo.core.nginxhashbucket import hashbucket
-import sys
 import os
 import glob
 import subprocess
+import json
 
 
 def wo_site_hook(app):
@@ -30,6 +31,7 @@ class WOSiteController(CementBaseController):
         label = 'site'
         stacked_on = 'base'
         stacked_type = 'nested'
+        exit_on_close = True
         description = ('Performs website specific operations')
         arguments = [
             (['site_name'],
@@ -49,6 +51,7 @@ class WOSiteController(CementBaseController):
                     self.app.pargs.site_name = (input('Enter site name : ')
                                                 .strip())
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'could not input site name')
 
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
@@ -87,6 +90,7 @@ class WOSiteController(CementBaseController):
                                                 .strip())
 
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'could not input site name')
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
         (wo_domain, wo_www_domain) = ValidateDomain(self.app.pargs.site_name)
@@ -126,6 +130,7 @@ class WOSiteController(CementBaseController):
                     self.app.pargs.site_name = (input('Enter site name : ')
                                                 .strip())
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'could not input site name')
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
         (wo_domain, wo_www_domain) = ValidateDomain(self.app.pargs.site_name)
@@ -192,6 +197,7 @@ class WOSiteController(CementBaseController):
                     self.app.pargs.site_name = (input('Enter site name : ')
                                                 .strip())
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'could not input site name')
         # TODO Write code for wo site edit command here
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
@@ -221,6 +227,7 @@ class WOSiteController(CementBaseController):
                     self.app.pargs.site_name = (input('Enter site name : ')
                                                 .strip())
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'Unable to read input, please try again')
 
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
@@ -233,7 +240,7 @@ class WOSiteController(CementBaseController):
         WOFileUtils.chdir(self, wo_site_webroot)
 
         try:
-            subprocess.call(['bash'])
+            subprocess.call(['/bin/bash'])
         except OSError as e:
             Log.debug(self, "{0}{1}".format(e.errno, e.strerror))
             Log.error(self, "unable to change directory")
@@ -244,6 +251,7 @@ class WOSiteEditController(CementBaseController):
         label = 'edit'
         stacked_on = 'site'
         stacked_type = 'nested'
+        exit_on_close = True
         description = ('Edit Nginx configuration of site')
         arguments = [
             (['site_name'],
@@ -259,6 +267,7 @@ class WOSiteEditController(CementBaseController):
                     self.app.pargs.site_name = (input('Enter site name : ')
                                                 .strip())
             except IOError as e:
+                Log.debug(self, str(e))
                 Log.error(self, 'Unable to read input, Please try again')
 
         self.app.pargs.site_name = self.app.pargs.site_name.strip()
@@ -275,6 +284,7 @@ class WOSiteEditController(CementBaseController):
                 WOShellExec.invoke_editor(self, '/etc/nginx/sites-availa'
                                           'ble/{0}'.format(wo_domain))
             except CommandExecutionError as e:
+                Log.debug(self, str(e))
                 Log.error(self, "Failed invoke editor")
             if (WOGit.checkfilestatus(self, "/etc/nginx",
                                       '/etc/nginx/sites-available/{0}'
@@ -295,6 +305,7 @@ class WOSiteCreateController(CementBaseController):
         label = 'create'
         stacked_on = 'site'
         stacked_type = 'nested'
+        exit_on_close = True
         description = ('this commands set up configuration and installs '
                        'required files as options are provided')
         arguments = [
@@ -304,6 +315,8 @@ class WOSiteCreateController(CementBaseController):
             (['--html'],
                 dict(help="create html site", action='store_true')),
             (['--php'],
+             dict(help="create php 7.2 site", action='store_true')),
+            (['--php72'],
                 dict(help="create php 7.2 site", action='store_true')),
             (['--php73'],
                 dict(help="create php 7.3 site", action='store_true')),
@@ -325,6 +338,12 @@ class WOSiteCreateController(CementBaseController):
             (['--wpsc'],
                 dict(help="create WordPress single/multi site with wpsc cache",
                      action='store_true')),
+            (['--wprocket'],
+             dict(help="create WordPress single/multi site with WP-Rocket",
+                  action='store_true')),
+            (['--wpce'],
+             dict(help="create WordPress single/multi site with Cache-Enabler",
+                  action='store_true')),
             (['--wpredis'],
                 dict(help="create WordPress single/multi site "
                      "with redis cache",
@@ -361,6 +380,8 @@ class WOSiteCreateController(CementBaseController):
     @expose(hide=True)
     def default(self):
         pargs = self.app.pargs
+        if pargs.php72:
+            self.app.pargs.php = True
         # self.app.render((data), 'default.mustache')
         # Check domain name validation
         data = dict()
@@ -413,7 +434,8 @@ class WOSiteCreateController(CementBaseController):
         if stype == 'proxy':
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=True,  basic=False, php73=False, wp=False,
-                        wpfc=False, wpsc=False, multisite=False,
+                        wpfc=False, wpsc=False, wprocket=False, wpce=False,
+                        multisite=False,
                         wpsubdir=False, webroot=wo_site_webroot)
             data['proxy'] = True
             data['host'] = host
@@ -423,14 +445,16 @@ class WOSiteCreateController(CementBaseController):
         if self.app.pargs.php73:
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=False,  basic=False, php73=True, wp=False,
-                        wpfc=False, wpsc=False, multisite=False,
+                        wpfc=False, wpsc=False, wprocket=False, wpce=False,
+                        multisite=False,
                         wpsubdir=False, webroot=wo_site_webroot)
             data['basic'] = True
 
         if stype in ['html', 'php']:
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=True,  basic=False, php73=False, wp=False,
-                        wpfc=False, wpsc=False, multisite=False,
+                        wpfc=False, wpsc=False, wprocket=False, wpce=False,
+                        multisite=False,
                         wpsubdir=False, webroot=wo_site_webroot)
 
             if stype == 'php':
@@ -441,7 +465,8 @@ class WOSiteCreateController(CementBaseController):
 
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=False,  basic=True, wp=False, wpfc=False,
-                        wpsc=False, wpredis=False, multisite=False,
+                        wpsc=False, wpredis=False, wprocket=False, wpce=False,
+                        multisite=False,
                         wpsubdir=False, webroot=wo_site_webroot,
                         wo_db_name='', wo_db_user='', wo_db_pass='',
                         wo_db_host='')
@@ -469,6 +494,8 @@ class WOSiteCreateController(CementBaseController):
 
         if ((not self.app.pargs.wpfc) and
             (not self.app.pargs.wpsc) and
+            (not self.app.pargs.wprocket) and
+            (not self.app.pargs.wpce) and
                 (not self.app.pargs.wpredis)):
             data['basic'] = True
 
@@ -619,7 +646,7 @@ class WOSiteCreateController(CementBaseController):
 
             if (data['wp'] and (self.app.pargs.vhostonly)):
                 try:
-                    data = setupdatabase(self, data)
+                    wo_wp_creds = setupwordpress(self, data)
                     # Add database information for site into database
                     updateSiteInfo(self, wo_domain, db_name=data['wo_db_name'],
                                    db_user=data['wo_db_user'],
@@ -760,10 +787,10 @@ class WOSiteCreateController(CementBaseController):
                 if self.app.pargs.hsts:
                     setupHsts(self, wo_domain)
 
+                site_url_https(self, wo_domain)
                 if not WOService.reload_service(self, 'nginx'):
                     Log.error(self, "service nginx reload failed. "
                               "check issues with `nginx -t` command")
-
                 Log.info(self, "Congratulations! Successfully Configured "
                          "SSl for Site "
                          " https://{0}".format(wo_domain))
@@ -773,7 +800,6 @@ class WOSiteCreateController(CementBaseController):
                           msg="Adding letsencrypts config of site: {0}"
                           .format(wo_domain))
                 updateSiteInfo(self, wo_domain, ssl=letsencrypt)
-
             elif data['letsencrypt'] is False:
                 Log.info(self, "Not using Let\'s encrypt for Site "
                          " http://{0}".format(wo_domain))
@@ -784,6 +810,7 @@ class WOSiteUpdateController(CementBaseController):
         label = 'update'
         stacked_on = 'site'
         stacked_type = 'nested'
+        exit_on_close = True
         description = ('This command updates websites configuration to '
                        'another as per the options are provided')
         arguments = [
@@ -795,8 +822,10 @@ class WOSiteUpdateController(CementBaseController):
                      action='store_true')),
             (['--html'],
                 dict(help="update to html site", action='store_true')),
-            (['--php'],
+            (['--php72'],
                 dict(help="update to php site", action='store_true')),
+            (['--php'],
+             dict(help="update to php site", action='store_true')),
             (['--php73'],
                 dict(help="update to php73 site",
                      action='store' or 'store_const',
@@ -814,6 +843,10 @@ class WOSiteUpdateController(CementBaseController):
                 dict(help="update to wpfc cache", action='store_true')),
             (['--wpsc'],
                 dict(help="update to wpsc cache", action='store_true')),
+            (['--wprocket'],
+                dict(help="update to WP-Rocket cache", action='store_true')),
+            (['--wpce'],
+                dict(help="update to Cache-Enabler cache", action='store_true')),
             (['--wpredis'],
                 dict(help="update to redis cache", action='store_true')),
             (['-le', '--letsencrypt'],
@@ -844,6 +877,9 @@ class WOSiteUpdateController(CementBaseController):
     def default(self):
         pargs = self.app.pargs
 
+        if pargs.php72:
+            pargs.php = True
+
         if pargs.all:
             if pargs.site_name:
                 Log.error(self, "`--all` option cannot be used with site name"
@@ -854,6 +890,7 @@ class WOSiteUpdateController(CementBaseController):
             if not (pargs.php or pargs.php73 or
                     pargs.mysql or pargs.wp or pargs.wpsubdir or
                     pargs.wpsubdomain or pargs.wpfc or pargs.wpsc or
+                    pargs.wprocket or pargs.wpce or
                     pargs.wpredis or pargs.letsencrypt or pargs.hsts or
                     pargs.dns or pargs.force):
                 Log.error(self, "Please provide options to update sites.")
@@ -932,6 +969,7 @@ class WOSiteUpdateController(CementBaseController):
         if (pargs.password and not (pargs.html or
                                     pargs.php or pargs.php73 or pargs.mysql or
                                     pargs.wp or pargs.wpfc or pargs.wpsc or
+                                    pargs.wprocket or pargs.wpce or
                                     pargs.wpsubdir or pargs.wpsubdomain or
                                     pargs.hsts)):
             try:
@@ -944,6 +982,7 @@ class WOSiteUpdateController(CementBaseController):
         if (pargs.hsts and not (pargs.html or
                                 pargs.php or pargs.php73 or pargs.mysql or
                                 pargs.wp or pargs.wpfc or pargs.wpsc or
+                                pargs.wprocket or parge.wpce or
                                 pargs.wpsubdir or pargs.wpsubdomain or
                                 pargs.password)):
             try:
@@ -985,16 +1024,16 @@ class WOSiteUpdateController(CementBaseController):
         if stype == 'php':
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=False,  basic=True, wp=False, wpfc=False,
-                        wpsc=False, wpredis=False, multisite=False,
-                        wpsubdir=False, webroot=wo_site_webroot,
+                        wpsc=False, wpredis=False, wprocket=False, wpce=False,
+                        multisite=False, wpsubdir=False, webroot=wo_site_webroot,
                         currsitetype=oldsitetype, currcachetype=oldcachetype)
 
         elif stype in ['mysql', 'wp', 'wpsubdir', 'wpsubdomain']:
 
             data = dict(site_name=wo_domain, www_domain=wo_www_domain,
                         static=False,  basic=True, wp=False, wpfc=False,
-                        wpsc=False, wpredis=False, multisite=False,
-                        wpsubdir=False, webroot=wo_site_webroot,
+                        wpsc=False, wpredis=False, wprocket=False, wpce=False,
+                        multisite=False, wpsubdir=False, webroot=wo_site_webroot,
                         wo_db_name='', wo_db_user='', wo_db_pass='',
                         wo_db_host='',
                         currsitetype=oldsitetype, currcachetype=oldcachetype)
@@ -1047,21 +1086,43 @@ class WOSiteUpdateController(CementBaseController):
                     data['wpfc'] = False
                     data['wpsc'] = False
                     data['wpredis'] = False
+                    data['wprocket'] = False
+                    data['wpce'] = False
                 elif oldcachetype == 'wpfc':
                     data['basic'] = False
                     data['wpfc'] = True
                     data['wpsc'] = False
                     data['wpredis'] = False
+                    data['wprocket'] = False
+                    data['wpce'] = False
                 elif oldcachetype == 'wpsc':
                     data['basic'] = False
                     data['wpfc'] = False
                     data['wpsc'] = True
                     data['wpredis'] = False
+                    data['wprocket'] = False
+                    data['wpce'] = False
                 elif oldcachetype == 'wpredis':
                     data['basic'] = False
                     data['wpfc'] = False
                     data['wpsc'] = False
                     data['wpredis'] = True
+                    data['wprocket'] = False
+                    data['wpce'] = False
+                elif oldcachetype == 'wprocket':
+                    data['basic'] = False
+                    data['wpfc'] = False
+                    data['wpsc'] = False
+                    data['wpredis'] = False
+                    data['wprocket'] = True
+                    data['wpce'] = False
+                elif oldcachetype == 'wpce':
+                    data['basic'] = False
+                    data['wpfc'] = False
+                    data['wpsc'] = False
+                    data['wpredis'] = False
+                    data['wprocket'] = False
+                    data['wpce'] = True
 
             if pargs.php73 == 'on':
                 data['php73'] = True
@@ -1168,7 +1229,6 @@ class WOSiteUpdateController(CementBaseController):
                     Log.error(self, "HTTPS is not configured for given "
                               "site", False)
                     return 0
-            pass
 
         if pargs.letsencrypt:
             if pargs.letsencrypt == 'on':
@@ -1215,23 +1275,20 @@ class WOSiteUpdateController(CementBaseController):
                 data['php73'] = False
                 php73 = False
 
-            if pargs.letsencrypt == "on":
-                if oldsitetype in ['wpsubdomain']:
-                    if pargs.dns:
-                        data['letsencrypt'] = True
-                        letsencrypt = True
-                        pargs.letsencrypt == 'wildcard'
-                    else:
-                        data['letsencrypt'] = True
-                        letsencrypt = True
-                else:
-                    data['letsencrypt'] = True
-                    letsencrypt = True
-
         if pargs.wpredis and data['currcachetype'] != 'wpredis':
             data['wpredis'] = True
             data['basic'] = False
             cache = 'wpredis'
+
+        if pargs.wprocket and data['currcachetype'] != 'wprocket':
+            data['wprocket'] = True
+            data['basic'] = False
+            cache = 'wprocket'
+
+        if pargs.wpce and data['currcachetype'] != 'wpce':
+            data['wpce'] = True
+            data['basic'] = False
+            cache = 'wpce'
 
         if (php73 is old_php73) and (stype == oldsitetype and
                                      cache == oldcachetype):
@@ -1240,10 +1297,8 @@ class WOSiteUpdateController(CementBaseController):
         if pargs.hsts:
             if pargs.hsts == "on":
                 data['hsts'] = True
-                hsts = True
             elif pargs.hsts == "off":
                 data['hsts'] = False
-                hsts = False
 
         if not data:
             Log.error(self, "Cannot update {0}, Invalid Options"
@@ -1311,16 +1366,17 @@ class WOSiteUpdateController(CementBaseController):
                         setupLetsEncrypt(self, wo_domain, False, True,
                                          True, wo_acme_dns)
                         httpsRedirect(self, wo_domain, True, True)
+                    site_url_https(self, wo_domain)
                 else:
                     WOFileUtils.mvfile(self, "{0}/conf/nginx/ssl.conf.disabled"
                                        .format(wo_site_webroot),
                                        '{0}/conf/nginx/ssl.conf'
                                        .format(wo_site_webroot))
+                    site_url_https(self, wo_domain)
 
                 if not WOService.reload_service(self, 'nginx'):
                     Log.error(self, "service nginx reload failed. "
                               "check issues with `nginx -t` command")
-
                 Log.info(self, "Congratulations! Successfully "
                          "Configured SSl for Site "
                          " https://{0}".format(wo_domain))
@@ -1474,25 +1530,33 @@ class WOSiteUpdateController(CementBaseController):
                              "and please try again")
                     return 1
 
-            if ((oldcachetype in ['wpsc', 'basic', 'wpredis'] and
+            if ((oldcachetype in ['wpsc', 'basic', 'wpredis', 'wprocket', 'wpce'] and
                  (data['wpfc'])) or (oldsitetype == 'wp' and
                                      data['multisite'] and data['wpfc'])):
                 try:
-                    plugin_data = '{"log_level":"INFO","log_filesize":5,'
-                    '"enable_purge":1,"enable_map":0,"enable_log":0,'
-                    '"enable_stamp":0,"purge_homepage_on_new":1,'
-                    '"purge_homepage_on_edit":1,"purge_homepage_on_del":1,'
-                    '"purge_archive_on_new":1,"purge_archive_on_edit":0,'
-                    '"purge_archive_on_del":0,'
-                    '"purge_archive_on_new_comment":0,'
-                    '"purge_archive_on_deleted_comment":0,'
-                    '"purge_page_on_mod":1,'
-                    '"purge_page_on_new_comment":1,'
-                    '"purge_page_on_deleted_comment":1,'
-                    '"cache_method":"enable_fastcgi",'
-                    '"purge_method":"get_request",'
-                    '"redis_hostname":"127.0.0.1","redis_port":"6379",'
-                    '"redis_prefix":"nginx-cache:"}'
+                    plugin_data_object = {"log_level": "INFO",
+                                          "log_filesize": 5,
+                                          "enable_purge": 1,
+                                          "enable_map": "0",
+                                          "enable_log": 0,
+                                          "enable_stamp": 0,
+                                          "purge_homepage_on_new": 1,
+                                          "purge_homepage_on_edit": 1,
+                                          "purge_homepage_on_del": 1,
+                                          "purge_archive_on_new": 1,
+                                          "purge_archive_on_edit": 0,
+                                          "purge_archive_on_del": 0,
+                                          "purge_archive_on_new_comment": 0,
+                                          "purge_archive_on_deleted_comment": 0,
+                                          "purge_page_on_mod": 1,
+                                          "purge_page_on_new_comment": 1,
+                                          "purge_page_on_deleted_comment": 1,
+                                          "cache_method": "enable_fastcgi",
+                                          "purge_method": "get_request",
+                                          "redis_hostname": "127.0.0.1",
+                                          "redis_port": "6379",
+                                          "redis_prefix": "nginx-cache:"}
+                    plugin_data = json.dumps(plugin_data_object)
                     setupwp_plugin(
                         self, 'nginx-helper',
                         'rt_wp_nginx_helper_options', plugin_data, data)
@@ -1505,26 +1569,34 @@ class WOSiteUpdateController(CementBaseController):
                              "and please try again")
                     return 1
 
-            elif ((oldcachetype in ['wpsc', 'basic', 'wpfc'] and
+            elif ((oldcachetype in ['wpsc', 'basic', 'wpfc', 'wprocket', 'wpce'] and
                    (data['wpredis'])) or (oldsitetype == 'wp' and
                                           data['multisite'] and
                                           data['wpredis'])):
                 try:
-                    plugin_data = '{"log_level":"INFO","log_filesize":5,'
-                    '"enable_purge":1,"enable_map":0,"enable_log":0,'
-                    '"enable_stamp":0,"purge_homepage_on_new":1,'
-                    '"purge_homepage_on_edit":1,"purge_homepage_on_del":1,'
-                    '"purge_archive_on_new":1,"purge_archive_on_edit":0,'
-                    '"purge_archive_on_del":0,'
-                    '"purge_archive_on_new_comment":0,'
-                    '"purge_archive_on_deleted_comment":0,'
-                    '"purge_page_on_mod":1,'
-                    '"purge_page_on_new_comment":1,'
-                    '"purge_page_on_deleted_comment":1,'
-                    '"cache_method":"enable_redis",'
-                    '"purge_method":"get_request",'
-                    '"redis_hostname":"127.0.0.1","redis_port":"6379",'
-                    '"redis_prefix":"nginx-cache:"}'
+                    plugin_data_object = {"log_level": "INFO",
+                                          "log_filesize": 5,
+                                          "enable_purge": 1,
+                                          "enable_map": "0",
+                                          "enable_log": 0,
+                                          "enable_stamp": 0,
+                                          "purge_homepage_on_new": 1,
+                                          "purge_homepage_on_edit": 1,
+                                          "purge_homepage_on_del": 1,
+                                          "purge_archive_on_new": 1,
+                                          "purge_archive_on_edit": 0,
+                                          "purge_archive_on_del": 0,
+                                          "purge_archive_on_new_comment": 0,
+                                          "purge_archive_on_deleted_comment": 0,
+                                          "purge_page_on_mod": 1,
+                                          "purge_page_on_new_comment": 1,
+                                          "purge_page_on_deleted_comment": 1,
+                                          "cache_method": "enable_redis",
+                                          "purge_method": "get_request",
+                                          "redis_hostname": "127.0.0.1",
+                                          "redis_port": "6379",
+                                          "redis_prefix": "nginx-cache:"}
+                    plugin_data = json.dumps(plugin_data_object)
                     setupwp_plugin(
                         self, 'nginx-helper',
                         'rt_wp_nginx_helper_options', plugin_data, data)
@@ -1538,20 +1610,29 @@ class WOSiteUpdateController(CementBaseController):
                     return 1
             else:
                 try:
-                    plugin_data = '{"log_level":"INFO","log_filesize":5,'
-                    '"enable_purge":0,"enable_map":0,"enable_log":0,'
-                    '"enable_stamp":0,"purge_homepage_on_new":1,'
-                    '"purge_homepage_on_edit":1,"purge_homepage_on_del":1,'
-                    '"purge_archive_on_new":1,"purge_archive_on_edit":0,'
-                    '"purge_archive_on_del":0,'
-                    '"purge_archive_on_new_comment":0,'
-                    '"purge_archive_on_deleted_comment":0,'
-                    '"purge_page_on_mod":1,"purge_page_on_new_comment":1,'
-                    '"purge_page_on_deleted_comment":1,'
-                    '"cache_method":"enable_redis",'
-                    '"purge_method":"get_request",'
-                    '"redis_hostname":"127.0.0.1",'
-                    '"redis_port":"6379","redis_prefix":"nginx-cache:"}'
+                    plugin_data_object = {"log_level": "INFO",
+                                          "log_filesize": 5,
+                                          "enable_purge": 0,
+                                          "enable_map": 0,
+                                          "enable_log": 0,
+                                          "enable_stamp": 0,
+                                          "purge_homepage_on_new": 1,
+                                          "purge_homepage_on_edit": 1,
+                                          "purge_homepage_on_del": 1,
+                                          "purge_archive_on_new": 1,
+                                          "purge_archive_on_edit": 0,
+                                          "purge_archive_on_del": 0,
+                                          "purge_archive_on_new_comment": 0,
+                                          "purge_archive_on_deleted_comment": 0,
+                                          "purge_page_on_mod": 1,
+                                          "purge_page_on_new_comment": 1,
+                                          "purge_page_on_deleted_comment": 1,
+                                          "cache_method": "enable_redis",
+                                          "purge_method": "get_request",
+                                          "redis_hostname": "127.0.0.1",
+                                          "redis_port": "6379",
+                                          "redis_prefix": "nginx-cache:"}
+                    plugin_data = json.dumps(plugin_data_object)
                     setupwp_plugin(
                         self, 'nginx-helper',
                         'rt_wp_nginx_helper_options', plugin_data, data)
@@ -1596,28 +1677,19 @@ class WOSiteUpdateController(CementBaseController):
                          "`tail /var/log/wo/wordops.log` and please try again")
                 return 1
 
-        if oldcachetype != 'wpredis' and data['wpredis']:
+        if oldcachetype == 'wprocket' and not data['wprocket']:
             try:
-                if installwp_plugin(self, 'redis-cache', data):
-                    # add WP_CACHE_KEY_SALT if not already set
-                    try:
-                        Log.debug(self, "Updating wp-config.php.")
-                        WOShellExec.cmd_exec(self,
-                                             "bash -c \"php {0} --allow-root "
-                                             .format(WOVariables.wo_wpcli_path) +
-                                             "config set --add "
-                                             "WP_CACHE_KEY_SALT "
-                                             "\'{0}:\' --path={1}\""
-                                             .format(wo_domain,
-                                                     wo_site_webroot))
-                    except IOError as e:
-                        Log.debug(self, str(e))
-                        Log.debug(self, "Updating wp-config.php failed.")
-                        Log.warn(self, "Updating wp-config.php failed. "
-                                 "Could not append:"
-                                 "\ndefine( \'WP_CACHE_KEY_SALT\', "
-                                 "\'{0}:\' );".format(wo_domain) +
-                                       "\nPlease add manually")
+                uninstallwp_plugin(self, 'wp-rocket', data)
+            except SiteError as e:
+                Log.debug(self, str(e))
+                Log.info(self, Log.FAIL + "Update site failed."
+                         "Check the log for details: "
+                         "`tail /var/log/wo/wordops.log` and please try again")
+                return 1
+
+        if oldcachetype == 'wpce' and not data['wpce']:
+            try:
+                uninstallwp_plugin(self, 'cache-enabler', data)
             except SiteError as e:
                 Log.debug(self, str(e))
                 Log.info(self, Log.FAIL + "Update site failed."
@@ -1675,6 +1747,7 @@ class WOSiteDeleteController(CementBaseController):
         label = 'delete'
         stacked_on = 'site'
         stacked_type = 'nested'
+        exit_on_close = True
         description = 'delete an existing website'
         arguments = [
             (['site_name'],
@@ -1812,6 +1885,7 @@ class WOSiteListController(CementBaseController):
         label = 'list'
         stacked_on = 'site'
         stacked_type = 'nested'
+        exit_on_close = True
         description = 'List websites'
         arguments = [
             (['--enabled'],

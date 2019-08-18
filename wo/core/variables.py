@@ -3,7 +3,6 @@ import platform
 import socket
 import configparser
 import os
-import psutil
 import datetime
 
 
@@ -11,32 +10,26 @@ class WOVariables():
     """Intialization of core variables"""
 
     # WordOps version
-    wo_version = "3.9.6.2"
+    wo_version = "3.9.8.1"
     # WordOps packages versions
     wo_wp_cli = "2.2.0"
-    wo_adminer = "4.7.1"
+    wo_adminer = "4.7.2"
     wo_phpmyadmin = "4.9.0.1"
+    wo_extplorer = "2.1.13"
+    wo_dashboard = "1.1"
 
     # Get WPCLI path
-    wo_wpcli_path = os.popen('command -v wp | tr "\n" " "').read()
-    if wo_wpcli_path == '':
-        wo_wpcli_path = '/usr/local/bin/wp '
-
-    # get wan network interface name
-    wo_wan = os.popen("/sbin/ip -4 route get 8.8.8.8 | "
-                      "grep -oP \"dev [^[:space:]]+ \" "
-                      "| cut -d ' ' -f 2").read()
-    if wo_wan == '':
-        wo_wan = 'eth0'
+    wo_wpcli_path = '/usr/local/bin/wp'
 
     # Current date and time of System
     wo_date = datetime.datetime.now().strftime('%d%b%Y%H%M%S')
 
     # WordOps core variables
-    wo_platform_distro = os.popen("lsb_release -si "
-                                  "| tr -d \'\\n\'").read().lower()
+    wo_distro = os.popen("/usr/bin/lsb_release -si "
+                         "| tr -d \'\\n\'").read().lower()
     wo_platform_version = platform.linux_distribution()[1]
-    wo_platform_codename = os.popen("lsb_release -sc | tr -d \'\\n\'").read()
+    wo_platform_codename = os.popen(
+        "/usr/bin/lsb_release -sc | tr -d \'\\n\'").read()
 
     # Get timezone of system
     if os.path.isfile('/etc/timezone'):
@@ -68,7 +61,7 @@ class WOVariables():
     try:
         wo_user = config['user']['name']
         wo_email = config['user']['email']
-    except Exception as e:
+    except Exception:
         wo_user = input("Enter your name: ")
         wo_email = input("Enter your email: ")
         os.system("/usr/bin/git config --global user.name {0}".format(wo_user))
@@ -85,21 +78,16 @@ class WOVariables():
     if [cnfpath] == config.read(cnfpath):
         try:
             wo_mysql_host = config.get('client', 'host')
-        except configparser.NoOptionError as e:
+        except configparser.NoOptionError:
             wo_mysql_host = "localhost"
     else:
         wo_mysql_host = "localhost"
 
     # WordOps stack installation variables
     # Nginx repo and packages
-    if wo_platform_distro == 'ubuntu':
-        if wo_platform_codename == 'trusty':
-            wo_nginx_repo = ("deb http://download.opensuse.org"
-                             "/repositories/home:"
-                             "/virtubox:/WordOps/xUbuntu_14.04/ /")
-        else:
-            wo_nginx_repo = "ppa:wordops/nginx-wo"
-    elif wo_platform_distro == 'debian':
+    if wo_distro == 'ubuntu':
+        wo_nginx_repo = "ppa:wordops/nginx-wo"
+    elif wo_distro == 'debian':
         if wo_platform_codename == 'jessie':
             wo_nginx_repo = ("deb http://download.opensuse.org"
                              "/repositories/home:"
@@ -120,43 +108,30 @@ class WOVariables():
     wo_nginx_key = '188C9FB063F0247A'
 
     # PHP repo and packages
-    if wo_platform_distro == 'ubuntu':
+    if wo_distro == 'ubuntu':
         wo_php_repo = "ppa:ondrej/php"
-        wo_php = ["php7.2-fpm", "php7.2-curl", "php7.2-gd", "php7.2-imap",
-                  "php7.2-readline", "php7.2-common", "php7.2-recode",
-                  "php7.2-cli", "php7.2-mbstring",
-                  "php7.2-bcmath", "php7.2-mysql", "php7.2-opcache",
-                  "php7.2-zip", "php7.2-xml", "php7.2-soap"]
-        wo_php73 = ["php7.3-fpm", "php7.3-curl", "php7.3-gd", "php7.3-imap",
-                    "php7.3-readline", "php7.3-common", "php7.3-recode",
-                    "php7.3-cli", "php7.3-mbstring",
-                    "php7.3-bcmath", "php7.3-mysql", "php7.3-opcache",
-                    "php7.3-zip", "php7.3-xml", "php7.3-soap"]
-        wo_php_extra = ["php-memcached", "php-imagick",
-                        "graphviz", "php-xdebug", "php-msgpack", "php-redis"]
         wo_php_key = ''
     else:
         wo_php_repo = (
             "deb https://packages.sury.org/php/ {codename} main"
             .format(codename=wo_platform_codename))
-        wo_php = ["php7.2-fpm", "php7.2-curl", "php7.2-gd", "php7.2-imap",
-                  "php7.2-readline", "php7.2-common", "php7.2-recode",
-                  "php7.2-cli", "php7.2-mbstring",
-                  "php7.2-bcmath", "php7.2-mysql", "php7.2-opcache",
-                  "php7.2-zip", "php7.2-xml", "php7.2-soap"]
-        wo_php73 = ["php7.3-fpm", "php7.3-curl", "php7.3-gd", "php7.3-imap",
-                    "php7.3-readline", "php7.3-common", "php7.3-recode",
-                    "php7.3-cli", "php7.3-mbstring",
-                    "php7.3-bcmath", "php7.3-mysql", "php7.3-opcache",
-                    "php7.3-zip", "php7.3-xml", "php7.3-soap"]
-        wo_php_extra = ["php-memcached", "php-imagick",
-                        "graphviz", "php-xdebug", "php-msgpack",
-                        "php-redis", "php-mysql"]
-
         wo_php_key = 'AC0E47584A7A714D'
 
+    wo_php = ["php7.2-fpm", "php7.2-curl", "php7.2-gd", "php7.2-imap",
+              "php7.2-readline", "php7.2-common", "php7.2-recode",
+              "php7.2-cli", "php7.2-mbstring",
+              "php7.2-bcmath", "php7.2-mysql", "php7.2-opcache",
+              "php7.2-zip", "php7.2-xml", "php7.2-soap"]
+    wo_php73 = ["php7.3-fpm", "php7.3-curl", "php7.3-gd", "php7.3-imap",
+                "php7.3-readline", "php7.3-common", "php7.3-recode",
+                "php7.3-cli", "php7.3-mbstring",
+                "php7.3-bcmath", "php7.3-mysql", "php7.3-opcache",
+                "php7.3-zip", "php7.3-xml", "php7.3-soap"]
+    wo_php_extra = ["php-memcached", "php-imagick",
+                    "graphviz", "php-xdebug", "php-msgpack", "php-redis"]
+
     # MySQL repo and packages
-    if wo_platform_distro == 'ubuntu':
+    if wo_distro == 'ubuntu':
         wo_mysql_repo = ("deb [arch=amd64,ppc64el] "
                          "http://sfo1.mirrors.digitalocean.com/mariadb/repo/"
                          "10.3/ubuntu {codename} main"
@@ -166,12 +141,15 @@ class WOVariables():
                          "http://sfo1.mirrors.digitalocean.com/mariadb/repo/"
                          "10.3/debian {codename} main"
                          .format(codename=wo_platform_codename))
+
     wo_mysql = ["mariadb-server", "percona-toolkit", "python3-mysqldb"]
 
-    wo_fail2ban = ["fail2ban", "python3-pyinotify"]
+    wo_mysql_client = ["mariadb-client", "python3-mysqldb"]
+
+    wo_fail2ban = ["fail2ban"]
 
     # Redis repo details
-    if wo_platform_distro == 'ubuntu':
+    if wo_distro == 'ubuntu':
         wo_redis_repo = ("ppa:chris-lea/redis-server")
 
     else:

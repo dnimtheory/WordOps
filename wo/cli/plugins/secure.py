@@ -1,6 +1,5 @@
 from cement.core.controller import CementBaseController, expose
 from cement.core import handler, hook
-from wo.core.aptget import WOAptGet
 from wo.core.shellexec import WOShellExec
 from wo.core.variables import WOVariables
 from wo.core.logging import Log
@@ -8,8 +7,6 @@ from wo.core.git import WOGit
 from wo.core.services import WOService
 import string
 import random
-import sys
-import hashlib
 import getpass
 
 
@@ -38,31 +35,33 @@ class WOSecureController(CementBaseController):
 
     @expose(hide=True)
     def default(self):
-        if self.app.pargs.auth:
+        pargs = self.app.pargs
+        if pargs.auth:
             self.secure_auth()
-        if self.app.pargs.port:
+        if pargs.port:
             self.secure_port()
-        if self.app.pargs.ip:
+        if pargs.ip:
             self.secure_ip()
 
     @expose(hide=True)
     def secure_auth(self):
         """This function secures authentication"""
+        pargs = self.app.pargs
         passwd = ''.join([random.choice
                           (string.ascii_letters + string.digits)
                           for n in range(24)])
-        if not self.app.pargs.user_input:
+        if not pargs.user_input:
             username = input("Provide HTTP authentication user "
                              "name [{0}] :".format(WOVariables.wo_user))
-            self.app.pargs.user_input = username
+            pargs.user_input = username
             if username == "":
-                self.app.pargs.user_input = WOVariables.wo_user
-        if not self.app.pargs.user_pass:
+                pargs.user_input = WOVariables.wo_user
+        if not pargs.user_pass:
             password = getpass.getpass("Provide HTTP authentication "
                                        "password [{0}] :".format(passwd))
-            self.app.pargs.user_pass = password
+            pargs.user_pass = password
             if password == "":
-                self.app.pargs.user_pass = passwd
+                pargs.user_pass = passwd
         Log.debug(self, "printf username:"
                   "$(openssl passwd -crypt "
                   "password 2> /dev/null)\n\""
@@ -71,8 +70,8 @@ class WOSecureController(CementBaseController):
                              "$(openssl passwd -crypt "
                              "{password} 2> /dev/null)\n\""
                              "> /etc/nginx/htpasswd-wo 2>/dev/null"
-                             .format(username=self.app.pargs.user_input,
-                                     password=self.app.pargs.user_pass),
+                             .format(username=pargs.user_input,
+                                     password=pargs.user_pass),
                              log=False)
         WOGit.add(self, ["/etc/nginx"],
                   msg="Adding changed secure auth into Git")
@@ -80,42 +79,44 @@ class WOSecureController(CementBaseController):
     @expose(hide=True)
     def secure_port(self):
         """This function Secures port"""
-        if self.app.pargs.user_input:
-            while not self.app.pargs.user_input.isdigit():
+        pargs = self.app.pargs
+        if pargs.user_input:
+            while not pargs.user_input.isdigit():
                 Log.info(self, "Please enter a valid port number ")
-                self.app.pargs.user_input = input("WordOps "
+                pargs.user_input = input("WordOps "
                                                   "admin port [22222]:")
-        if not self.app.pargs.user_input:
+        if not pargs.user_input:
             port = input("WordOps admin port [22222]:")
             if port == "":
-                self.app.pargs.user_input = 22222
+                pargs.user_input = 22222
             while not port.isdigit() and port != "":
                 Log.info(self, "Please Enter valid port number :")
                 port = input("WordOps admin port [22222]:")
-            self.app.pargs.user_input = port
+            pargs.user_input = port
         WOShellExec.cmd_exec(self, "sed -i \"s/listen.*/listen "
                              "{port} default_server ssl http2;/\" "
                              "/etc/nginx/sites-available/22222"
-                             .format(port=self.app.pargs.user_input))
+                             .format(port=pargs.user_input))
         WOGit.add(self, ["/etc/nginx"],
                   msg="Adding changed secure port into Git")
         if not WOService.reload_service(self, 'nginx'):
             Log.error(self, "service nginx reload failed. "
                       "check issues with `nginx -t` command")
         Log.info(self, "Successfully port changed {port}"
-                 .format(port=self.app.pargs.user_input))
+                 .format(port=pargs.user_input))
 
     @expose(hide=True)
     def secure_ip(self):
         """IP whitelisting"""
-        newlist = []
-        if not self.app.pargs.user_input:
+        pargs = self.app.pargs
+        if not pargs.user_input:
             ip = input("Enter the comma separated IP addresses "
                        "to white list [127.0.0.1]:")
-            self.app.pargs.user_input = ip
+            pargs.user_input = ip
         try:
-            user_ip = self.app.pargs.user_input.split(',')
+            user_ip = pargs.user_input.split(',')
         except Exception as e:
+            Log.debug(self, "{0}".format(e))
             user_ip = ['127.0.0.1']
         for ip_addr in user_ip:
             if not ("exist_ip_address "+ip_addr in open('/etc/nginx/common/'

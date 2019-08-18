@@ -6,8 +6,7 @@
 <h2 align="center">An essential toolset that eases WordPress site and server administration</h2>
 
 <p align="center">
-<img src="https://img.virtubox.net/images/2019/03/27/wordops-stable-4.mp4.gif" width="600" alt="WordOps" />
-
+<img src="https://docs.wordops.net/images/wordops-intro.gif" width="600" alt="WordOps" />
 </p>
 
 <p align="center">
@@ -15,10 +14,10 @@
 <img src="https://img.shields.io/github/license/wordops/wordops.svg" alt="MIT">
 <img src="https://img.shields.io/github/last-commit/wordops/wordops.svg" alt="Commits">
 <img alt="GitHub release" src="https://img.shields.io/github/release/WordOps/WordOps.svg">
-<br><a href="https://www.codacy.com/app/VirtuBox/WordOps?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=WordOps/WordOps&amp;utm_campaign=Badge_Grade"><img src="https://api.codacy.com/project/badge/Grade/fe9100fd2c634de7882ecec17f00a11a"/></a>
+<br><img src="https://netdata.wordops.eu/netdata/api/v1/badge.svg?chart=web_log_wops.cc.requests_per_url&options=unaligned&dimensions=download&group=sum&after=-86400&label=today&units=installations&precision=0&value_color=%230055AA" alt="WordOps install" >
+<a href="https://www.codacy.com/app/VirtuBox/WordOps?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=WordOps/WordOps&amp;utm_campaign=Badge_Grade"><img src="https://api.codacy.com/project/badge/Grade/fe9100fd2c634de7882ecec17f00a11a" alt="codacy"/></a>
 <a href="https://twitter.com/WordOps_" target="_blank"><img src="https://img.shields.io/badge/twitter-%40WordOps__-blue.svg?style=flat&logo=twitter" alt="Badge Twitter" /></a>
 <a href="https://community.wordops.net/slack" target="_blank"><img src="https://img.shields.io/badge/slack-WordOps-4A154B.svg?style=flat&logo=slack" alt="Badge Slack" /></a>
-
 </p>
 
 <p align="center">
@@ -32,7 +31,7 @@
 <p align="center">
 <a href="https://wordops.net" target="_blank"> WordOps.net</a> •
 <a href="https://docs.wordops.net" target="_blank">Documentation</a> •
-<a href="https://community.wordops.net" target="_blank">Community forum</a> •
+<a href="https://community.wordops.net" target="_blank">Community Forum</a> •
 <a href="https://demo.wordops.eu" target="_blank">Dashboard demo</a>
 </p>
 
@@ -42,32 +41,32 @@
 
 - **Easy to install** : One step automated installer with migration from EasyEngine v3 support
 - **Fast deployment** : Fast and automated WordPress, Nginx, PHP, MySQL & Redis installation
-- **Custom Nginx build** : Nginx 1.16.0 - TLS v1.3 Cloudflare HTTP/2 HPACK & Brotli support
+- **Custom Nginx build** : Nginx 1.16.1 - TLS v1.3 Cloudflare HTTP/2 HPACK & Brotli support
 - **Up-to-date** : PHP 7.2 & 7.3, MariaDB 10.3 & Redis 5.0
 - **Secured** : Hardened WordPress security with strict Nginx location directives
 - **Powerful** : Optimized Nginx configurations with multiple cache backends support
-- **SSL** : Domain, Subdomain & Wildcard Let's Encrypt SSL certificates handled by acme.sh
-- **Modern** : Strong ciphers_suite, modern TLS protocols and HSTS support (Grade A+ on ssllabs)
+- **SSL** : Domain, Subdomain & Wildcard Let's Encrypt SSL certificates with DNS API support
+- **Modern** : Strong ciphers_suite, modern TLS protocols and HSTS support (Grade A+ on [ssllabs](https://www.ssllabs.com/ssltest/analyze.html?d=demo.wordops.eu&latest))
 - **Monitoring** : Live Nginx vhost traffic with ngx_vts_module and server monitoring with Netdata
+- **User Friendly** : WordOps dashboard with server status/monitoring and tools ([demo](https://demo.wordops.eu))
+
+---
 
 ## Requirements
 
 ### Operating System
 
-- Ubuntu 16.04 LTS (Xenial)
+#### Recommended
+
 - Ubuntu 18.04 LTS (Bionic)
+
+#### Also compatible
+
+- Ubuntu 16.04 LTS (Xenial)
 - Ubuntu 19.04 (Disco)
-- Debian 8 (Jessie)
 - Debian 9 (Stretch)
 - Debian 10 (Buster) - Not ready for production
 - Raspbian 9 (Stretch)
-
-### Ports requirements
-
-- SSH (22 or custom)
-- HTTP & HTTPS (80 & 443)
-- WO Admin (22222)
-- GPG key Server (11371 outbound)
 
 ## Getting Started
 
@@ -76,9 +75,7 @@ wget -qO wo wops.cc && sudo bash wo      # Install WordOps
 sudo wo site create example.com --wp     # Install required packages & setup WordPress on example.com
 ```
 
-## Must read
-
-[From EasyEngine to WordOps](https://docs.wordops.net/about/from-easyengine-to-wordops/)
+Detailed Getting Started guide with additional installation methods can be found in [the documentation](https://docs.wordops.net/getting-started/installation-guide/).
 
 ## Usage
 
@@ -87,9 +84,11 @@ sudo wo site create example.com --wp     # Install required packages & setup Wor
 ```bash
 wo site create example.com --wp                  # install wordpress without any page caching
 wo site create example.com --wp  --php73         # install wordpress with PHP 7.3  without any page caching
-wo site create example.com --wpsc                # install wordpress with wp-super-cache plugin
 wo site create example.com --wpfc                # install wordpress + nginx fastcgi_cache
 wo site create example.com --wpredis             # install wordpress + nginx redis_cache
+wo site create example.com --wprocket            # install wordpress with WP-Rocket plugin
+wo site create example.com --wpce                # install wordpress with Cache-enabler plugin
+wo site create example.com --wpsc                # install wordpress with wp-super-cache plugin
 ```
 
 ### WordPress multisite with subdirectory
@@ -99,6 +98,8 @@ wo site create example.com --wpsubdir            # install wpmu-subdirectory wit
 wo site create example.com --wpsubdir --wpsc     # install wpmu-subdirectory with wp-super-cache plugin
 wo site create example.com --wpsubdir --wpfc     # install wpmu-subdirectory + nginx fastcgi_cache
 wo site create example.com --wpsubdir --wpredis  # install wpmu-subdirectory + nginx redis_cache
+wo site create example.com --wpsubdir --wprocket # install wpmu-subdirectory + WP-Rocket plugin
+wo site create example.com --wpsubdir --wpce     # install wpmu-subdirectory + Cache-Enabler plugin
 ```
 
 ### WordPress multisite with subdomain
@@ -108,6 +109,8 @@ wo site create example.com --wpsubdomain            # install wpmu-subdomain wit
 wo site create example.com --wpsubdomain --wpsc     # install wpmu-subdomain with wp-super-cache plugin
 wo site create example.com --wpsubdomain --wpfc     # install wpmu-subdomain + nginx fastcgi_cache
 wo site create example.com --wpsubdomain --wpredis  # install wpmu-subdomain + nginx redis_cache
+wo site create example.com --wpsubdomain --wprocket # install wpmu-subdomain + WP-Rocket plugin
+wo site create example.com --wpsubdomain --wpce     # install wpmu-subdomain + Cache-Enabler plugin
 ```
 
 ### Non-WordPress sites
@@ -115,17 +118,19 @@ wo site create example.com --wpsubdomain --wpredis  # install wpmu-subdomain + n
 ```bash
 wo site create example.com --html     # create example.com for static/html sites
 wo site create example.com --php      # create example.com with php support
+wo site create example.com --php73      # create example.com with php 7.3 support
 wo site create example.com --mysql    # create example.com with php & mysql support
+wo site create example.com --mysql --php73   # create example.com with php 7.3 & mysql support
 wo site create example.com --proxy=127.0.0.1:3000 #  create example.com with nginx as reverse-proxy
 ```
 
 ### Sites secured with Let's Encrypt
 
 ```bash
-wo site create example.com --wp --letsencrypt #  wordpress secured with letsencrypt
-wo site create sub.example.com --wp --letsencrypt=subdomain # wordpress + letsencrypt subdomain
-wo site create site.tld --wp --letsencrypt --hsts # install wordpress & secure site with letsencrypt with HSTS
-wo site create site.tld --wp --letsencrypt=wildcard --dns=dns_cf # install wordpress & issue a wildcard SSL certificate with Cloudflare DNS API
+wo site create example.com --wp --letsencrypt #  wordpress & letsencrypt
+wo site create sub.example.com --wp --letsencrypt=subdomain # wordpress & letsencrypt subdomain
+wo site create site.tld --wp --letsencrypt --hsts # wordpress & letsencrypt with HSTS
+wo site create site.tld --wp --letsencrypt=wildcard --dns=dns_cf # wordpress & wildcard SSL certificate with Cloudflare DNS API
 ```
 
 ## Update WordOps
