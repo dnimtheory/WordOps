@@ -8,6 +8,109 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### v3.9.x - [Unreleased]
 
+### v3.9.8.7 - 2019-08-31
+
+#### Changed
+
+- WordPress default permalinks structure from `/%year%/%monthnum%/%day%/%postname%/` -> `/%postname%/`
+
+#### Fixed
+
+- Error with `wo stack upgrade --nginx`
+- Install/update script version check
+- clamAV stack install
+
+### v3.9.8.6 - 2019-08-30
+
+#### Added
+
+- Subdomains are automatically secured with an existant Wildcard LetsEncrypt SSL certificate.
+(If a wildcard certificate exist, WordOps will use this certificate for subdomains instead of issuing new certificates)
+- MySQL & Redis stack to `wo stack remove/purge`
+
+#### Changed
+
+- Date format in backup name : /backup/30Aug2019035932 -> /backup/30Aug2019-03-59-32
+- Cleanup and update bash_completion
+- cheat.sh is installed with WordOps install script, not as a stack because it wasn't downloaded at all by WordOps (unknown reason yet)
+
+#### Fixed
+
+- cache-enabler plugin not installed and configured with `wo site update site.tld --wpce`
+- possible issue with domain variable in `--letsencrypt=wildcard`
+- python3-mysqldb not available on Debian 8 (Jessie)
+- Fix mysql variable skip-name-resolved
+- Fix typo in redis tuning directives
+
+### v3.9.8.5 - 2019-08-30
+
+#### Changed
+
+- updated OpCache Control Panel to v0.2.0
+
+#### Fixed
+
+- Fix Netdata install on Raspbian 9/10
+- `wo stack remove/purge` confirmation
+- Nginx error after removing a SSL certificate used to secure WordOps backend
+- `wo stack install --all`
+- ProFTPd fail2ban rules set twice if removed and reinstalled
+- `wo site update`
+
+### v3.9.8.4 - 2019-08-28
+
+#### Added
+
+- cht.sh stack : linux online cheatsheet. Usage : `cheat <command>`. Example for tar : `cheat tar`
+- ClamAV anti-virus with weekly cronjob to update signatures database
+- Internal function to add daily cronjobs
+- Additional comment to detect previous configuration tuning (MariaDB & Redis)
+- Domain/Subdomain detection based on public domain suffixes list for letsencrypt
+- Increase Nginx & MariaDB systemd open_files limits
+- Cronjob to update Cloudflare IPs list
+- mariadb-backup to perform full and non-blocking databases backup (installation only. Backup feature will be available soon)
+- Nginx configuration check before performing start/reload/restart (If configuration check fail, WordOps will not reload/restart Nginx anymore)
+- Nginx mapping to proxy web-socket connections
+
+#### Changed
+
+- eXplorer filemanager isn't installed with WordOps dashboard anymore, and a flag `--extplorer` is available. But it's still installed when running the command `wo stack install`
+- Template rendering function now check for a .custom file before overwriting a configuration by default.
+- flag `--letsencrypt=subdomain` is not required anymore, you can use `--letsencrypt` or `-le`
+- Simplifiy and decrease duration of `apt-key` GPG keys import
+
+#### Fixed
+
+- typo error in `wo site update` : [PR #126](https://github.com/WordOps/WordOps/pull/126)
+
+### v3.9.8.3 - 2019-08-21
+
+#### Changed
+
+- Nginx package OpenSSL configuration improvements (TLS v1.3 now available on all operating systems supported by WordOps)
+- remove user prompt for confirmation with `wo update`
+- Nginx stack will not be upgraded with `wo update` anymore. This can be done at anytime with `wo upgrade --nginx`
+- Databases name and user are now semi-randomly generated (0-8 letters from the domain + 8 random caracters)
+
+#### Fixed
+
+- `wo upgrade` output
+- Database name or database user length
+
+### v3.9.8.2 - 2019-08-20
+
+#### Added
+
+- Additional cache expection for Easy Digital Downloads [PR #120](https://github.com/WordOps/WordOps/pull/120)
+- Additional settings to support mobile with WP-Rocket
+- Add the ability to block nginx configuration overwriting by adding a file .custom. Example with /etc/nginx/conf.d/webp.conf -> `touch /etc/nginx/conf.d/webp.conf.custom`
+- If there is a custom file, WordOps will write the configuration in a file named fileconf.conf.orig to let users implement possible changes
+- UFW minimal configuration during install. Can be disabled with the flag `-w`, `--wufw` or `--without-ufw`. Example : `wget -qO wo wops.cc && sudo bash wo -w`
+
+#### Fixed
+
+- WordOps internal database creation on servers running with custom setup
+
 ### v3.9.8.1 - 2019-08-18
 
 #### Added

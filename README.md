@@ -6,7 +6,7 @@
 <h2 align="center">An essential toolset that eases WordPress site and server administration</h2>
 
 <p align="center">
-<img src="https://docs.wordops.net/images/wordops-intro.gif" width="600" alt="WordOps" />
+<img src="https://docs.wordops.net/images/wordops-intro.gif" width="800" alt="WordOps" />
 </p>
 
 <p align="center">
@@ -67,6 +67,7 @@
 - Debian 9 (Stretch)
 - Debian 10 (Buster) - Not ready for production
 - Raspbian 9 (Stretch)
+- Raspbian 10 (Buster) - Testing
 
 ## Getting Started
 
@@ -167,6 +168,10 @@ Apps & Tools shipped with WordOps :
 - [MySQLTuner](https://github.com/major/MySQLTuner-perl/)
 - [Webgrind](https://github.com/jokkedk/webgrind)
 - [MySQLTuner](https://github.com/major/MySQLTuner-perl)
+- [Fail2Ban](https://github.com/fail2ban/fail2ban)
+- [ClamAV](https://github.com/Cisco-Talos/clamav-devel)
+- [cheat.sh](https://github.com/chubin/cheat.sh)
+- [ProFTPd](https://github.com/proftpd/proftpd)
 
 ## License
 

@@ -1,5 +1,5 @@
 """WordOps core variable module"""
-import platform
+import distro
 import socket
 import configparser
 import os
@@ -10,7 +10,7 @@ class WOVariables():
     """Intialization of core variables"""
 
     # WordOps version
-    wo_version = "3.9.8.1"
+    wo_version = "3.9.8.7"
     # WordOps packages versions
     wo_wp_cli = "2.2.0"
     wo_adminer = "4.7.2"
@@ -22,14 +22,15 @@ class WOVariables():
     wo_wpcli_path = '/usr/local/bin/wp'
 
     # Current date and time of System
-    wo_date = datetime.datetime.now().strftime('%d%b%Y%H%M%S')
+    wo_date = datetime.datetime.now().strftime('%d%b%Y-%H-%M-%S')
 
     # WordOps core variables
-    wo_distro = os.popen("/usr/bin/lsb_release -si "
-                         "| tr -d \'\\n\'").read().lower()
-    wo_platform_version = platform.linux_distribution()[1]
-    wo_platform_codename = os.popen(
-        "/usr/bin/lsb_release -sc | tr -d \'\\n\'").read()
+    wo_distro = distro.linux_distribution(
+        full_distribution_name=False)[0].lower()
+    wo_platform_version = distro.linux_distribution(
+        full_distribution_name=False)[1].lower()
+    wo_platform_codename = distro.linux_distribution(
+        full_distribution_name=False)[2].lower()
 
     # Get timezone of system
     if os.path.isfile('/etc/timezone'):
@@ -87,22 +88,24 @@ class WOVariables():
     # Nginx repo and packages
     if wo_distro == 'ubuntu':
         wo_nginx_repo = "ppa:wordops/nginx-wo"
-    elif wo_distro == 'debian':
-        if wo_platform_codename == 'jessie':
-            wo_nginx_repo = ("deb http://download.opensuse.org"
-                             "/repositories/home:"
-                             "/virtubox:/WordOps/Debian_8.0/ /")
-        elif wo_platform_codename == 'stretch':
-            wo_nginx_repo = ("deb http://download.opensuse.org"
-                             "/repositories/home:"
-                             "/virtubox:/WordOps/Debian_9.0/ /")
-        elif wo_platform_codename == 'buster':
-            wo_nginx_repo = ("deb http://download.opensuse.org"
-                             "/repositories/home:"
-                             "/virtubox:/WordOps/Debian_10/ /")
     else:
-        wo_nginx_repo = ("deb http://download.opensuse.org/repositories/home:"
-                         "/virtubox:/WordOps/Raspbian_9.0/ /")
+        if wo_distro == 'debian':
+            if wo_platform_codename == 'jessie':
+                wo_deb_repo = "Debian_8.0"
+            elif wo_platform_codename == 'stretch':
+                wo_deb_repo = "Debian_9.0"
+            elif wo_platform_codename == 'buster':
+                wo_deb_repo = "Debian_10"
+        elif wo_distro == 'raspbian':
+            if wo_platform_codename == 'stretch':
+                wo_deb_repo = "Raspbian_9.0"
+            elif wo_platform_codename == 'buster':
+                wo_deb_repo = "Raspbian_10"
+        # debian/raspbian nginx repository
+        wo_nginx_repo = ("deb http://download.opensuse.org"
+                         "/repositories/home:"
+                         "/virtubox:/WordOps/{0}/ /"
+                         .format(wo_deb_repo))
 
     wo_nginx = ["nginx-custom", "nginx-wo"]
     wo_nginx_key = '188C9FB063F0247A'
@@ -110,7 +113,6 @@ class WOVariables():
     # PHP repo and packages
     if wo_distro == 'ubuntu':
         wo_php_repo = "ppa:ondrej/php"
-        wo_php_key = ''
     else:
         wo_php_repo = (
             "deb https://packages.sury.org/php/ {codename} main"
@@ -119,12 +121,12 @@ class WOVariables():
 
     wo_php = ["php7.2-fpm", "php7.2-curl", "php7.2-gd", "php7.2-imap",
               "php7.2-readline", "php7.2-common", "php7.2-recode",
-              "php7.2-cli", "php7.2-mbstring",
+              "php7.2-cli", "php7.2-mbstring", "php7.2-intl",
               "php7.2-bcmath", "php7.2-mysql", "php7.2-opcache",
               "php7.2-zip", "php7.2-xml", "php7.2-soap"]
     wo_php73 = ["php7.3-fpm", "php7.3-curl", "php7.3-gd", "php7.3-imap",
                 "php7.3-readline", "php7.3-common", "php7.3-recode",
-                "php7.3-cli", "php7.3-mbstring",
+                "php7.3-cli", "php7.3-mbstring", "php7.3-intl",
                 "php7.3-bcmath", "php7.3-mysql", "php7.3-opcache",
                 "php7.3-zip", "php7.3-xml", "php7.3-soap"]
     wo_php_extra = ["php-memcached", "php-imagick",
@@ -142,11 +144,23 @@ class WOVariables():
                          "10.3/debian {codename} main"
                          .format(codename=wo_platform_codename))
 
-    wo_mysql = ["mariadb-server", "percona-toolkit", "python3-mysqldb"]
+    if wo_distro == 'raspbian':
+        wo_mysql = ["mariadb-server", "percona-toolkit",
+                    "python3-mysqldb"]
+    elif wo_platform_codename == 'jessie':
+        wo_mysql = ["mariadb-server", "percona-toolkit",
+                    "python3-mysql.connector"]
+    else:
+        wo_mysql = ["mariadb-server", "percona-toolkit",
+                    "python3-mysqldb", "mariadb-backup"]
 
-    wo_mysql_client = ["mariadb-client", "python3-mysqldb"]
+    if wo_platform_codename == 'jessie':
+        wo_mysql_client = ["mariadb-client", "python3-mysqldb"]
+    else:
+        wo_mysql_client = ["mariadb-client", "python3-mysql.connector"]
 
     wo_fail2ban = ["fail2ban"]
+    wo_clamav = ["clamav", "clamav-freshclam"]
 
     # Redis repo details
     if wo_distro == 'ubuntu':

@@ -244,6 +244,22 @@ class WOFileUtils():
             Log.error(self, "Unable to Search string {0} in {1}"
                       .format(sstr, fnm))
 
+    def grepcheck(self, fnm, sstr):
+        """
+            Searches for string in file and returns True or False.
+        """
+        try:
+            Log.debug(self, "Finding string {0} to file {1}"
+                      .format(sstr, fnm))
+            for line in open(fnm, encoding='utf-8'):
+                if sstr in line:
+                    return True
+            return False
+        except OSError as e:
+            Log.debug(self, "{0}".format(e.strerror))
+            Log.error(self, "Unable to Search string {0} in {1}"
+                      .format(sstr, fnm))
+
     def rm(self, path):
         """
             Remove files
@@ -263,3 +279,33 @@ class WOFileUtils():
                 Log.debug(self, "{0}".format(e))
                 Log.error(self, "Unable to remove file  : {0} "
                           .format(path))
+
+    def findBrokenSymlink(self, sympath):
+        """
+            Find symlinks
+        """
+        links = []
+        broken = []
+
+        for root, dirs, files in os.walk(sympath):
+            if root.startswith('./.git'):
+                # Ignore the .git directory.
+                continue
+            for filename in files:
+                path = os.path.join(root, filename)
+                if os.path.islink(path):
+                    target_path = os.readlink(path)
+                    # Resolve relative symlinks
+                    if not os.path.isabs(target_path):
+                        target_path = os.path.join(os.path.dirname(path),
+                                                   target_path)
+                    if not os.path.exists(target_path):
+                        links.append(path)
+                        broken.append(path)
+                        os.remove(path)
+                    else:
+                        links.append(path)
+                else:
+                    # If it's not a symlink we're not interested.
+                    continue
+        return True

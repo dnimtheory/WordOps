@@ -3,7 +3,6 @@ import shutil
 
 from cement.core.controller import CementBaseController, expose
 from cement.core import handler, hook
-from wo.core.apt_repo import WORepo
 from wo.core.aptget import WOAptGet
 from wo.core.download import WODownload
 from wo.core.extract import WOExtract
@@ -12,7 +11,7 @@ from wo.core.logging import Log
 from wo.core.services import WOService
 from wo.core.shellexec import WOShellExec
 from wo.core.variables import WOVariables
-from wo.cli.plugins.stack_pref import post_pref
+from wo.cli.plugins.stack_pref import pre_pref, post_pref
 
 
 class WOStackUpgradeController(CementBaseController):
@@ -58,12 +57,14 @@ class WOStackUpgradeController(CementBaseController):
         ]
 
     @expose(hide=True)
-    def default(self):
+    def default(self, disp_msg=False):
         # All package update
         apt_packages = []
         packages = []
+        nginx_packages = []
         empty_packages = []
-        pargs = pargs = self.app.pargs
+        self.msg = []
+        pargs = self.app.pargs
 
         if ((not pargs.web) and (not pargs.nginx) and
             (not pargs.php) and (not pargs.php73) and
@@ -76,6 +77,13 @@ class WOStackUpgradeController(CementBaseController):
 
         if pargs.all:
             pargs.web = True
+            pargs.netdata = True
+            pargs.composer = True
+            pargs.dashboard = True
+            pargs.phpmyadmin = True
+            pargs.redis = True
+            pargs.wpcli = True
+            pargs.php73 = True
 
         if pargs.web:
             if WOAptGet.is_installed(self, 'nginx-custom'):
@@ -89,6 +97,7 @@ class WOStackUpgradeController(CementBaseController):
         if pargs.nginx:
             if WOAptGet.is_installed(self, 'nginx-custom'):
                 apt_packages = apt_packages + WOVariables.wo_nginx
+                nginx_packages = nginx_packages + WOVariables.wo_nginx
             else:
                 Log.info(self, "Nginx Stable is not already installed")
 
@@ -149,12 +158,7 @@ class WOStackUpgradeController(CementBaseController):
                       "releases/download/v{0}/wordops-dashboard.tar.gz"
                       .format(WOVariables.wo_dashboard),
                       "/var/lib/wo/tmp/wo-dashboard.tar.gz",
-                      "WordOps Dashboard"],
-                     ["https://github.com/soerennb/"
-                      "extplorer/archive/v{0}.tar.gz"
-                      .format(WOVariables.wo_extplorer),
-                      "/var/lib/wo/tmp/extplorer.tar.gz",
-                      "eXtplorer"]]
+                      "WordOps Dashboard"]]
 
         if pargs.phpmyadmin:
             if os.path.isdir('/var/www/22222/htdocs/db/pma'):
@@ -176,8 +180,7 @@ class WOStackUpgradeController(CementBaseController):
                                         "Composer"]]
             else:
                 Log.error(self, "Composer isn't installed")
-
-        if len(packages) or len(apt_packages):
+        if len(apt_packages) or len(packages):
             if len(apt_packages):
                 Log.info(self, "Your site may be down for few seconds if "
                          "you are upgrading Nginx, PHP-FPM, MariaDB or Redis")
@@ -187,6 +190,8 @@ class WOStackUpgradeController(CementBaseController):
                     if start_upgrade != "Y" and start_upgrade != "y":
                         Log.error(self, "Not starting package update")
                 Log.info(self, "Updating APT packages, please wait...")
+                if set(WOVariables.wo_nginx).issubset(set(apt_packages)):
+                    pre_pref(self, ["nginx-custom", "nginx-wo"])
                 # apt-get update
                 WOAptGet.update(self)
                 if set(WOVariables.wo_php).issubset(set(apt_packages)):
@@ -197,7 +202,7 @@ class WOStackUpgradeController(CementBaseController):
                                     auto=False, purge=True)
                 # Update packages
                 WOAptGet.install(self, apt_packages)
-                post_pref(self, apt_packages, empty_packages)
+                post_pref(self, apt_packages, empty_packages, True)
                 # Post Actions after package updates
 
             if len(packages):
